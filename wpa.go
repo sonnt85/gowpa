@@ -4,6 +4,8 @@ package gowpa
 
 import (
 	"errors"
+	"sort"
+	"strconv"
 
 	"fmt"
 	"net"
@@ -16,6 +18,7 @@ import (
 	"github.com/sonnt85/gosutils/sutils"
 	wpa_cli "github.com/sonnt85/gowpa/internal/wpacli"
 	"github.com/sonnt85/gowpa/internal/wpadbus"
+	"github.com/sonnt85/snetutils"
 )
 
 type ConnectionInfo struct {
@@ -68,7 +71,7 @@ var (
 	ScanManager    = &scanManager{NetInterface: "wlan0"}
 )
 
-func Scan(ifaces ...string) (ssids []string) {
+func Scan1(ifaces ...string) (ssids []string) {
 	ssids = []string{}
 
 	cmd2run := "wpa_cli scan; wpa_cli scan_results"
@@ -88,6 +91,62 @@ func Scan(ifaces ...string) (ssids []string) {
 		log.Errorf("Can not scan ssid %s", string(errstd))
 	}
 	return ssids
+}
+
+func Scan(ifaces ...string) (ssids []string) {
+	ssids = []string{}
+	iface := ""
+
+	if len(ifaces) != 0 {
+		iface = ifaces[0]
+	}
+	cmd2run := fmt.Sprintf("iwlist  %s scan | grep -e SSID -e Quality", iface)
+
+	//	fmt.Println("Scanning command ", cmd2run)
+	levels := []int{}
+	if stdout, errstd, err := sexec.ExecCommandShell(cmd2run, time.Minute*2); err == nil {
+		for _, v := range sutils.String2lines(string(stdout)) {
+			//		fmt.Println(v)
+			if ssid := sregexp.New(`ESSID:"(.+)"$`).FindStringSubmatch(v); len(ssid) != 0 {
+				ssids = append(ssids, ssid[1])
+			}
+
+			if level := sregexp.New(`level=(-[0-9]+)$`).FindStringSubmatch(v); len(level) != 0 {
+				if signal, err := strconv.Atoi(level[1]); err == nil {
+					levels = append(levels, signal)
+				}
+			}
+		}
+		sort.Slice(ssids, func(i, j int) bool {
+			if i < len(levels) && j < len(levels) {
+				return levels[i] < levels[j]
+			} else {
+				return false
+			}
+		})
+		//		sregexp.New().FindStringSubmatch(string(stdout))
+	} else {
+		log.Errorf("Can not scan ssid %s", string(errstd))
+	}
+	return ssids
+}
+
+func Connect(ssid, password string, ifaces ...string) (err error) {
+	iface := ""
+	if len(ifaces) != 0 {
+		iface = ifaces[0]
+	}
+	//	cmd2run := fmt.Sprintf("iwconfig %s essid %s key s:%s", iface, ssid, password)
+	cmd2run := fmt.Sprintf(`confile=/etc/wpa_supplicant/wpa_supplicant.conf; echo -e 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=VN' > $confile ; wpa_passphrase '%s' '%s' >> $confile && wpa_cli -i %s reconfigure`, ssid, password, iface)
+	fmt.Printf("Command connect wifi: %s", cmd2run)
+	_, stderr, err := sexec.ExecCommandShell(cmd2run, time.Minute*10)
+	snetutils.IpDhcpRenew(iface)
+	if err == nil {
+		//		snetutils.IpDhcpRenew(iface)
+		return nil
+	} else {
+		return fmt.Errorf(string(stderr))
+	}
 }
 
 func (self *connectManager) Connect(ssid string, password string, timeout time.Duration) (connectionInfo ConnectionInfo, e error) {
