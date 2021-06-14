@@ -136,11 +136,24 @@ func Connect(ssid, password string, ifaces ...string) (err error) {
 	if len(ifaces) != 0 {
 		iface = ifaces[0]
 	}
+
+	cmd2run := fmt.Sprintf(`iwgetid '%s' --raw | grep -Fe '%s'`, iface, ssid)
+	_, stderr, err := sexec.ExecCommandShell(cmd2run, time.Second*15)
+	if err == nil {
+		return nil
+	}
+
 	//	cmd2run := fmt.Sprintf("iwconfig %s essid %s key s:%s", iface, ssid, password)
-	cmd2run := fmt.Sprintf(`confile=/etc/wpa_supplicant/wpa_supplicant.conf; echo -e 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=VN' > $confile ; wpa_passphrase '%s' '%s' >> $confile && wpa_cli -i %s reconfigure`, ssid, password, iface)
+	cmd2run = fmt.Sprintf(`confile=/etc/wpa_supplicant/wpa_supplicant.conf; echo -e 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=VN' > $confile ; wpa_passphrase '%s' '%s' >> $confile && wpa_cli -i %s reconfigure`, ssid, password, iface)
 	fmt.Printf("Command connect wifi: %s", cmd2run)
-	_, stderr, err := sexec.ExecCommandShell(cmd2run, time.Minute*10)
+	_, stderr, err = sexec.ExecCommandShell(cmd2run, time.Second*60)
+	if err != nil {
+		return fmt.Errorf(string(stderr))
+	}
 	snetutils.IpDhcpRenew(iface)
+	cmd2run = fmt.Sprintf(`iwgetid '%s' --raw | grep -Fe '%s'`, iface, ssid)
+	_, stderr, err = sexec.ExecCommandShell(cmd2run, time.Second*15)
+
 	if err == nil {
 		//		snetutils.IpDhcpRenew(iface)
 		return nil
