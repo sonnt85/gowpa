@@ -74,6 +74,10 @@ fmt.Printf("Connected: %s  IP4: %s\n", info.SSID, info.IP4)
 - `ConnectManager` — default `*connectManager` for `wlan0`
 - `ScanManager` — default `*scanManager` for `wlan0`
 
+## Author
+
+**sonnt85** — [thanhson.rf@gmail.com](mailto:thanhson.rf@gmail.com)
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
