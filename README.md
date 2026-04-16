@@ -1,5 +1,7 @@
 # gowpa
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/sonnt85/gowpa.svg)](https://pkg.go.dev/github.com/sonnt85/gowpa)
+
 WPA supplicant interface for Go — scan Wi-Fi networks and connect using wpa_cli or D-Bus/wpadbus.
 
 ## Installation
