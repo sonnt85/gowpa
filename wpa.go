@@ -146,7 +146,7 @@ func Connect(ssid, password string, ifaces ...string) (err error) {
 	// fmt.Printf("Command connect wifi: %s", cmd2run)
 	_, stderr, err = sexec.ExecCommandShell(cmd2run, time.Second*60)
 	if err != nil {
-		return fmt.Errorf(string(stderr))
+		return fmt.Errorf("%s", string(stderr))
 	}
 	snetutils.IpDhcpRenew(iface)
 
@@ -167,7 +167,7 @@ func GetCurrentConnect(iface string) (ssid string, err error) {
 		ssid = strings.TrimRight(string(ssid), "\n")
 		return ssid, nil
 	} else {
-		return "", fmt.Errorf(string(stderr))
+		return "", fmt.Errorf("%s", string(stderr))
 	}
 }
 
